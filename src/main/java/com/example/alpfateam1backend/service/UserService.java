@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.alpfateam1backend.model.User;
+import com.example.alpfateam1backend.model.User.Role;
 import com.example.alpfateam1backend.repository.UserRepository;
 
 @Service
@@ -16,7 +17,14 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public void registerUser(String username, String password, String email, String role) {
+    public void registerUser(String username, String password, String email, Role role) {
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username is already taken");
+        }
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email is already in use");
+        }
+        
         User user = new User();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));

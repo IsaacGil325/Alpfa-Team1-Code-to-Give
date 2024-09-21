@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.example.alpfateam1backend.model.User.Role; // Import Role enum
 import com.example.alpfateam1backend.service.UserService;
 
 @Controller
@@ -28,8 +29,9 @@ public class AuthController {
     public String registerUser(@RequestParam String username, 
                                @RequestParam String password,
                                @RequestParam String email,
-                               @RequestParam String role) {
-        userService.registerUser(username, password, email, role);
+                               @RequestParam String role) { // Accepting role as String
+        Role userRole = Role.valueOf(role.toUpperCase()); // Convert String to Role enum
+        userService.registerUser(username, password, email, userRole);
         return "redirect:/login"; // Redirect to login after registration
     }
 
