@@ -3,11 +3,14 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from datetime import datetime
 
-from openai_similarity import (
-    get_candidates,
+
+from service_functions import (
+    get_all_job_postings_for_sponsor,
+    get_embedding,
     get_job_posting,
-    get_similarity_scores,
-    get_all_job_postings,
+    reasoning,
+    vector_search,
+    get_candidates,
 )
 
 app = Flask(__name__)
@@ -80,16 +83,29 @@ def sponsor_dashboard(sponsor_id):
 
 # 7) Route for each job posting made by sponsor (sponsor and job ID)
 @app.route("/sponsor/<sponsor_id>/job/<job_id>")
-def job_posting_details(sponsor_id, job_id):
-    # Call get_candidates and get_job_posting functions
-    candidates = get_candidates(db)
-    job_posting_details = get_job_posting(db, job_id, sponsor_id)
+def find_best_candidates_for_job(job_id, sponsor_id):
+    posting = get_job_posting(job_id, sponsor_id)
 
-    # Calculate similarity scores
-    similarity_scores = get_similarity_scores(candidates, job_posting_details)
+    posting_embedding = get_embedding(posting)
+
+    results = vector_search(posting_embedding)
+
+    top_candidates = [x["id"] for x in results]
+    scores = {x["id"]: f"{x['score']*100:1f}" for x in results}
+
+    top_candidates_details = get_candidates(query={"id": {"$in": top_candidates}})
+
+    for candidate in top_candidates_details:
+        candidate["summary"] = reasoning(candidate, posting)
+        candidate["similarityScore"] = scores[candidate["id"]]
+        candidate.pop("user")
+
+    print(top_candidates_details)
+
+    # print(top_candidates_details)
 
     # Render the template and pass job posting and similarity scores
-    return jsonify(similarity_scores), 200
+    return top_candidates_details, 200
 
 
 # 8) Candidate Dashboard
@@ -102,8 +118,8 @@ def candidate_dashboard(candidate_id):
 # 9) Route to get all job postings for a sponsor
 @app.route("/sponsor/<sponsor_id>/job_postings", methods=["GET"])
 def get_job_postings(sponsor_id):
-    postings = get_all_job_postings(db, sponsor_id)
-    return postings, 200
+    postings = get_all_job_postings_for_sponsor(db, sponsor_id)
+    return jsonify(postings), 200
 
 
 if __name__ == "__main__":
